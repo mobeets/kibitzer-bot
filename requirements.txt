@@ -1,2 +1,2 @@
 twython==3.0.0
-patterns
+pattern==2.6
