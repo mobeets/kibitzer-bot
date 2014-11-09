@@ -1,4 +1,4 @@
-gimport os
+import os
 import time
 from twython import Twython
 import model
