@@ -11,7 +11,7 @@ OAUTH_TOKEN_SECRET = os.environ['TWITTER_OAUTH_TOKEN_SECRET']
 TWEET_LENGTH = 140
 TWEET_URL_LENGTH = 21
 
-TWEET_EVERY_N_SECONDS = 60*10 # e.g. 60*10 = ten minutes between each tweet
+TWEET_EVERY_N_SECONDS = 60*5 # e.g. 60*10 = ten minutes between each tweet
 
 def twitter_handle():
     return Twython(CONSUMER_KEY, CONSUMER_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
@@ -32,7 +32,7 @@ def reply_to_mention(mention):
     reply = model.main(N=1, subject=subject, verbose=False, get_related=False)
     if not reply:
         return None
-    return '@{0} {1}'.format(username, reply[0])
+    return '.@{0} {1}'.format(username, reply[0])
 
 def reply_to_mentions(handle, last_tweet_id=None):
     """
@@ -76,6 +76,6 @@ def main():
             print message
             submit_tweet(message, handle)
         time.sleep(TWEET_EVERY_N_SECONDS)
-
+g
 if __name__ == '__main__':
     main()
