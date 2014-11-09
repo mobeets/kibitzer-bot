@@ -5,7 +5,7 @@ import random
 import os.path
 import argparse
 from pattern.en.wordlist import BASIC
-from pattern.en import wordnet, conjugate, pluralize, singularize, quantify
+from pattern.en import wordnet, conjugate, pluralize, singularize, quantify, tag
 # http://www.clips.ua.ac.be/pages/pattern-en
 
 BASE_DIR = 'data'
@@ -44,6 +44,12 @@ C = ['the', 'the', 'all those', 'so many']
 C2 = ['the', 'the', 'all those']
 coin_flip = lambda p: random.random() < p
 
+def subject_from_message(message):
+    ns = [w[0] for w in tag(message) if w[1] == 'NN']
+    if len(ns) == 0:
+        return None
+    return protect_against_plurals(ns[0].lower())
+
 def get_related_noun_or_not(noun, d=True):
     w = wordnet.synsets(noun)
     if w:
@@ -58,9 +64,12 @@ def get_related_noun_or_not(noun, d=True):
         return get_related_noun_or_not(singularize(noun, False))
     return noun
 
-def random_imperative(noun=None):
+def random_imperative(noun=None, get_related=True):
     if noun:
-        n = get_related_noun_or_not(noun)
+        if get_related:
+            n = get_related_noun_or_not(noun)
+        else:
+            n = noun
     else:
         n = random.choice(NOUNS)
     v = random.choice(VERBS)
@@ -125,15 +134,15 @@ def protect_against_plurals(word):
             wd = singled_if_word_2(word) if singled_if_word_2(word) else word
     return wd
 
-def main(N=50, subject=None, verbose=True):
+def main(N=50, subject=None, verbose=True, get_related=True):
     if subject:
         subject = protect_against_plurals(subject)
     imps = []
     for _ in xrange(N):
         if coin_flip(0.5):
-            imp = random_imperative(subject)
+            imp = random_imperative(subject, get_related)
         else:
-            imp = add_qualifier(random_imperative(subject))
+            imp = add_qualifier(random_imperative(subject, get_related))
         imps.append(imp)
     imps = [imp.capitalize() + '.' for imp in imps]
     if verbose:
@@ -145,5 +154,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', default=50, type=int, help="The number of imperatives to generate.")
     parser.add_argument('-s', default=None, type=str, help="The related subject of the imperatives.")
+    parser.add_argument("--msg", default=None, type=str, help="To get advice related to a message.")
     args = parser.parse_args()
-    main(args.n, args.s)
+    if args.msg:
+        subj = subject_from_message(args.msg)
+        print subj
+        main(1, subj, True, False)
+    else:
+        main(args.n, args.s)
