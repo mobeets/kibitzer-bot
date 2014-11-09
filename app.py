@@ -1,4 +1,4 @@
-import os
+gimport os
 import time
 from twython import Twython
 import model
@@ -76,6 +76,6 @@ def main():
             print message
             submit_tweet(message, handle)
         time.sleep(TWEET_EVERY_N_SECONDS)
-g
+
 if __name__ == '__main__':
     main()
