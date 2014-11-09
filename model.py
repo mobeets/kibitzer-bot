@@ -47,7 +47,7 @@ coin_flip = lambda p: random.random() < p
 def subject_from_message(message):
     ns = [w[0] for w in tag(message) if w[1] == 'NN']
     if len(ns) == 0:
-        return None
+        return protect_against_plurals(random.choice(message.split(' ')).lower())
     return protect_against_plurals(ns[0].lower())
 
 def get_related_noun_or_not(noun, d=True):
