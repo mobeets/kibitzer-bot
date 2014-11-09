@@ -45,7 +45,9 @@ C2 = ['the', 'the', 'all those']
 coin_flip = lambda p: random.random() < p
 
 def subject_from_message(message):
-    ns = [w[0] for w in tag(message) if w[1] == 'NN']
+    tags = tag(message)
+    print tags
+    ns = [w[0] for w in tags if 'NN' in w[1]]
     if len(ns) == 0:
         return protect_against_plurals(random.choice(message.split(' ')).lower())
     return protect_against_plurals(ns[0].lower())
