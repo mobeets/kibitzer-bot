@@ -11,7 +11,7 @@ OAUTH_TOKEN_SECRET = os.environ['TWITTER_OAUTH_TOKEN_SECRET']
 TWEET_LENGTH = 140
 TWEET_URL_LENGTH = 21
 
-TWEET_EVERY_N_SECONDS = 60*5 # e.g. 60*10 = ten minutes between each tweet
+TWEET_EVERY_N_SECONDS = 60*12 # e.g. 60*10 = ten minutes between each tweet
 
 def twitter_handle():
     return Twython(CONSUMER_KEY, CONSUMER_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
