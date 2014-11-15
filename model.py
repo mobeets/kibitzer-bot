@@ -173,6 +173,8 @@ def main(N=50, subject=None, verbose=True, get_related=True, verb=None, adj=None
         subject = protect_against_plurals(subject)
     else:
         subject = protect_against_plurals(random.choice(NOUNS))
+    if subject.lower() in ['you', 'me', 'i']:
+        subject = random.choice(['people', 'self', 'soul', 'one', 'human', 'being'])
     imps = []
     for _ in xrange(N):
         if coin_flip(0.5):
