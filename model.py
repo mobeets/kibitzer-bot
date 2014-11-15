@@ -4,8 +4,10 @@ import re
 import random
 import os.path
 import argparse
+import itertools
 from pattern.en.wordlist import BASIC
-from pattern.en import wordnet, conjugate, pluralize, singularize, quantify, tag
+from pattern.en import wordnet, conjugate, pluralize, singularize, quantify, parsetree
+# from pattern.search import taxonomy, WordNetClassifier
 # http://www.clips.ua.ac.be/pages/pattern-en
 
 BASE_DIR = 'data'
@@ -44,7 +46,9 @@ C = ['the', 'the', 'all those', 'so many']
 C2 = ['the', 'the', 'all those']
 coin_flip = lambda p: random.random() < p
 
-def subject_from_message(message):
+# taxonomy.classifiers.append(WordNetClassifier())
+
+def subject_from_message_old(message):
     tags = tag(message)
     print tags
     ns = [w[0] for w in tags if 'NN' in w[1]]
@@ -52,8 +56,35 @@ def subject_from_message(message):
         return protect_against_plurals(random.choice(message.split(' ')).lower())
     return protect_against_plurals(ns[0].lower())
 
-def get_related_noun_or_not(noun, d=True):
-    w = wordnet.synsets(noun)
+def max_ic(words, pos):
+    subj = None
+    syns = [wordnet.synsets(w, pos=pos) for w in words]
+    syns = [random.choice(s) for s in syns if s]
+    if syns:
+        vals = [(s.synonyms[0], s.ic) for s in syns]
+        if vals:
+            word, val = max(vals, key=lambda x: x[1])
+            subj = word
+    return subj
+
+def subject_from_message(message):
+    subj = None
+    tree = parsetree(message, relations=True, lemmata=True)
+    nouns = [n.string for s in tree for n in s.nouns if len(n.string) > 1]
+    verbs = [n.lemma if hasattr(n, 'lemma') else (n.lemmata[0] if n.lemmata else n.string) for s in tree for n in s.verbs if len(n.string) > 1]
+    adjs = [n.string for s in tree for n in s.adjectives if len(n.string) > 1]
+    subj = max_ic(nouns, 'NN')
+    if not subj:
+        ts = [v for s in tree for v in s.subjects]
+        ts += [v for s in tree for v in s.objects]
+        if ts:
+            subj = random.choice(ts).string
+    vrb = max_ic(verbs, 'VB')
+    adj = max_ic(adjs, 'JJ')
+    return protect_against_plurals(subj) if subj else subj, vrb, adj
+
+def get_related_or_not(word, d=True, pos='NN'):
+    w = wordnet.synsets(word, pos=pos)
     if w:
         w = w[0]
         w1 = w.hyponyms()
@@ -62,25 +93,24 @@ def get_related_noun_or_not(noun, d=True):
             nw = random.choice([w] + w1 + w2)
             if nw and nw.senses:
                 return nw.senses[0]
-    elif wordnet.synsets(singularize(noun)) and d:
-        return get_related_noun_or_not(singularize(noun, False))
-    return noun
+    elif wordnet.synsets(singularize(word)) and d:
+        return get_related_or_not(singularize(word, False, pos))
+    return word
 
-def random_imperative(noun=None, get_related=True):
+def random_imperative(noun=None, get_related=True, verb=None, adj=None):
     if noun:
-        if get_related:
-            n = get_related_noun_or_not(noun)
-        else:
-            n = noun
+        n = get_related_or_not(noun, True, 'NN') if get_related else noun
     else:
         n = random.choice(NOUNS)
-    v = random.choice(VERBS)
-    c = ''
-
-    if coin_flip(0.5):
-        adj = random.choice(ADJS)
+    if verb:
+        v = get_related_or_not(verb, True, 'VB')
+        if v is None:
+            v = verb
     else:
-        adj = ''
+        v = random.choice(VERBS)
+    if not adj:
+        adj = random.choice(ADJS) if coin_flip(0.5) else ''
+    c = ''
 
     if coin_flip(0.7):
         n = pluralize(n)
@@ -108,23 +138,25 @@ def random_imperative(noun=None, get_related=True):
     phrase = phrase[1:] if phrase.startswith(' ') else phrase
     return re.sub(' +', ' ', phrase)
 
-def add_qualifier(phrase):
-    n = random.choice(NOUNS)
+def add_qualifier(phrase, subj):
+    n = None
+    if subj:
+        syns = wordnet.synsets(subj, pos='NN')
+        if syns:
+            syn = random.choice(syns)
+            xs0 = syn.meronyms()
+            xs1 = syn.hypernyms()
+            xs2 = syn.hyponyms()
+            xs = xs0 + xs1 + xs2
+            if xs:
+                n = random.choice(xs).synonyms[0]
+    if not n:
+        n = random.choice(NOUNS)
     v = random.choice(VERBS)
-
-    if coin_flip(0.5):
-        a = 'cannot'
-    else:
-        a = 'can'
-
-    if coin_flip(0.5):
-        b = 'of'
-    else:
-        b = 'for the'
-
+    a = 'cannot' if coin_flip(0.5) else 'can'
+    b = 'of' if coin_flip(0.5) else 'for the'
     n = pluralize(n)
     v = conjugate(v)
-
     qual = '{0} you {1} {2}'.format(n, a, v)
     return '{0} {1} {2}'.format(phrase, b, qual)
 
@@ -136,15 +168,17 @@ def protect_against_plurals(word):
             wd = singled_if_word_2(word) if singled_if_word_2(word) else word
     return wd
 
-def main(N=50, subject=None, verbose=True, get_related=True):
+def main(N=50, subject=None, verbose=True, get_related=True, verb=None, adj=None):
     if subject:
         subject = protect_against_plurals(subject)
+    else:
+        subject = protect_against_plurals(random.choice(NOUNS))
     imps = []
     for _ in xrange(N):
         if coin_flip(0.5):
-            imp = random_imperative(subject, get_related)
+            imp = random_imperative(subject, get_related, verb=verb, adj=adj)
         else:
-            imp = add_qualifier(random_imperative(subject, get_related))
+            imp = add_qualifier(random_imperative(subject, get_related, verb=verb, adj=adj), subject)
         imps.append(imp)
     imps = [imp.capitalize() + '.' for imp in imps]
     if verbose:
@@ -159,8 +193,8 @@ if __name__ == '__main__':
     parser.add_argument("--msg", default=None, type=str, help="To get advice related to a message.")
     args = parser.parse_args()
     if args.msg:
-        subj = subject_from_message(args.msg)
-        print subj
-        main(1, subj, True, False)
+        subj, verb, adj = subject_from_message(args.msg)
+        print subj, verb, adj
+        main(1, subj, True, False, verb=verb, adj=adj)
     else:
         main(args.n, args.s)
