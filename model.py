@@ -81,7 +81,7 @@ def subject_from_message(message):
             subj = random.choice(ts).string
     vrb = max_ic(verbs, 'VB')
     adj = max_ic(adjs, 'JJ')
-    return protect_against_plurals(subj) if subj else subj, vrb, adj
+    return (protect_against_plurals(subj) if subj else subj), vrb, adj
 
 def get_related_or_not(word, d=True, pos='NN'):
     w = wordnet.synsets(word, pos=pos)

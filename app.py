@@ -28,8 +28,8 @@ def extract_subject(message):
 
 def reply_to_mention(mention):
     username = mention['user']['screen_name']
-    subject = extract_subject(mention['text'])
-    reply = model.main(N=1, subject=subject, verbose=False, get_related=False)
+    subject, verb, adj = extract_subject(mention['text'])
+    reply = model.main(N=1, subject=subject, verbose=False, get_related=False, verb=verb, adj=adj)
     if not reply:
         return None
     return '.@{0} {1}'.format(username, reply[0])
